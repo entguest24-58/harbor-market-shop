@@ -29,7 +29,7 @@ STOCK_BEFORE=$(cv_count "SELECT stock FROM products WHERE id=$PID")
 
 # When
 cv_step When "shopper checks out with the valid code while order creation fails" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "error returned; stock, orders, cart and discount usage are all unchanged" $LINENO

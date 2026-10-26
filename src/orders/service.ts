@@ -10,7 +10,7 @@ export type OrderStatus = 'placed' | 'shipped' | 'cancelled';
 
 export interface OrderItem {
   productId: number;
-  name: string;
+  productName: string;
   unitPriceCents: number;
   quantity: number;
   lineTotalCents: number;
@@ -73,7 +73,7 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
     const list = byOrder.get(it.order_id) ?? [];
     list.push({
       productId: it.product_id,
-      name: it.product_name,
+      productName: it.product_name,
       unitPriceCents: it.unit_price_cents,
       quantity: it.quantity,
       lineTotalCents: it.line_total_cents,
@@ -96,7 +96,7 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
   }));
 }
 
-/** Order history: mark each line with whether the item is still available right now (one query for all lines). */
+/** Order history: mark each line with live availability (one stock query for all lines). */
 async function withAvailability(orders: Order[]): Promise<Order[]> {
   const ids = [...new Set(orders.flatMap((o) => o.items.map((i) => i.productId)))];
   if (ids.length === 0) return orders;

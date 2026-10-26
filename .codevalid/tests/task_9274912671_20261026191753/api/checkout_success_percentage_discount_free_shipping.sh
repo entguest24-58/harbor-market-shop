@@ -19,7 +19,7 @@ cv_add_to_cart "$TOKEN" "$PID" 2 $LINENO
 # When
 cv_step When "shopper checks out with the percentage code (typed lowercase)" $LINENO
 LOWER=$(printf '%s' "$CODE" | tr 'A-Z' 'a-z')
-cv_http POST /orders/checkout "{\"discountCode\":\"$LOWER\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$LOWER\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "order created with 10% off, free shipping, stock reduced, cart emptied" $LINENO

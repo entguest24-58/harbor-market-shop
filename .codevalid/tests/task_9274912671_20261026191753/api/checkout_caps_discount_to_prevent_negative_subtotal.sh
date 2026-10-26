@@ -20,7 +20,7 @@ cv_add_to_cart "$TOKEN" "$PID" 1 $LINENO
 
 # When
 cv_step When "shopper checks out with the oversized fixed code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "discount capped at 1000, discounted subtotal 0, shipping 599 charged, total 599" $LINENO

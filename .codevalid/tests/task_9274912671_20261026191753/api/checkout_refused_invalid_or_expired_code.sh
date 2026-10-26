@@ -20,11 +20,11 @@ cv_add_to_cart "$TOKEN" "$PID" 2 $LINENO
 
 # When
 cv_step When "shopper checks out with a nonexistent, an expired and a deactivated code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$MISSING\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$MISSING\"}" -H "Authorization: Bearer $TOKEN"
 ST_MISSING=$CV_HTTP_STATUS; ERR_MISSING=$(printf '%s' "$CV_HTTP_BODY" | jq -r '.error // empty')
-cv_http POST /orders/checkout "{\"discountCode\":\"$EXP\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$EXP\"}" -H "Authorization: Bearer $TOKEN"
 ST_EXP=$CV_HTTP_STATUS; ERR_EXP=$(printf '%s' "$CV_HTTP_BODY" | jq -r '.error // empty')
-cv_http POST /orders/checkout "{\"discountCode\":\"$OFF\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$OFF\"}" -H "Authorization: Bearer $TOKEN"
 ST_OFF=$CV_HTTP_STATUS; ERR_OFF=$(printf '%s' "$CV_HTTP_BODY" | jq -r '.error // empty')
 
 # Then

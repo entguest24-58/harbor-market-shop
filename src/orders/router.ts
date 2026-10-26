@@ -14,15 +14,16 @@ function orderId(req: Request): number {
 }
 
 /**
- * Optional `discountCode` in the checkout body. A missing or non-object body, or a missing/null
- * field, means no code, so checkout without a code behaves exactly as before.
+ * Optional discount code in the checkout body: `couponCode` (the storefront's name for it) or `discountCode`.
+ * A missing or non-object body, or a missing/null field, means no code.
  */
 function discountCodeField(req: Request): string | undefined {
   const body = req.body as unknown;
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return undefined;
-  const value = (body as Record<string, unknown>).discountCode;
+  const fields = body as Record<string, unknown>;
+  const value = fields.couponCode ?? fields.discountCode;
   if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'string' || value.trim() === '') throw badRequest('discountCode must be a non-empty string');
+  if (typeof value !== 'string' || value.trim() === '') throw badRequest('couponCode must be a non-empty string');
   return value.trim();
 }
 
