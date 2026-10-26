@@ -25,13 +25,17 @@ cv_http GET "/orders/$NEW" "" 200 -H "Authorization: Bearer $TOKEN"
 NEWO=$(printf '%s' "$CV_HTTP_BODY" | jq -c '.order')
 
 # Then
-cv_step Then "old order is cancelled with no active discount; new order carries the discount" $LINENO
+cv_step Then "old order is cancelled with no active discount; new order carries it; lines show current availability" $LINENO
 got=$(printf '%s' "$NEWO" | jq -r '"\(.id) \(.status) \(.discountCode) \(.discountCents) \(.subtotalCents) \(.totalCents)"')
 [ "$got" = "$NEW placed $CODE 400 4000 4199" ] || cv_fail "expected new order '$NEW placed $CODE 400 4000 4199' got '$got'" $LINENO
 got=$(printf '%s' "$OLDO" | jq -r '"\(.id) \(.status)"')
 [ "$got" = "$OLD cancelled" ] || cv_fail "expected old order '$OLD cancelled' got '$got'" $LINENO
 dc=$(printf '%s' "$OLDO" | jq -r '"\(.discountCode) \(.discountCents)"')
 [ "$dc" = "null 0" ] || cv_fail "expected no active discount on old cancelled order (discountCode null, discountCents 0) got '$dc'" $LINENO
+av=$(cv_line_available "$OLDO" "$P1")
+[ "$av" = "true" ] || cv_fail "expected old order line available=true (product in catalog with stock) got $av" $LINENO
+av=$(cv_line_available "$NEWO" "$P1")
+[ "$av" = "true" ] || cv_fail "expected new order line available=true (product in catalog with stock) got $av" $LINENO
 
 # Cleanup
 cv_step Cleanup "remove created shopper, orders, discount code and product" $LINENO

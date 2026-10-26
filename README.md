@@ -64,13 +64,15 @@ Staff accounts cannot be created through the API; insert them directly (role `st
 
 | Method | Path                  | Auth  | Notes |
 | ------ | --------------------- | ----- | ----- |
-| POST   | `/orders/checkout`    | user  | Body optional: `{ discountCode? }`. One transaction: re-checks stock, applies the discount code if given, reduces stock, creates the order, empties the cart. Shipping 599 when the discounted subtotal is under 5000, free at 5000+. 400 empty cart or refused code, 409 if any line is unavailable or the shopper already used the code. A refused checkout changes nothing. 201 `{ order }` |
+| POST   | `/orders/checkout`    | user  | Body optional: `{ discountCode? }`. One transaction: re-checks stock, applies the discount code if given, reduces stock, creates the order, empties the cart. Shipping 599 when the discounted subtotal is under 4000, free at 4000+. 400 empty cart or refused code, 409 if any line is unavailable or the shopper already used the code. A refused checkout changes nothing. 201 `{ order }` |
 | GET    | `/orders`             | user  | Own orders, newest first |
 | GET    | `/orders/:id`         | user  | Own order only (404 otherwise) |
 | POST   | `/orders/:id/cancel`  | user  | Only while `placed`; returns stock |
 | POST   | `/orders/:id/ship`    | staff | `placed` → `shipped` |
 
-Order: `{ id, userId, status, items[], subtotalCents, discountCode, discountCents, shippingCents, totalCents, createdAt, updatedAt }`,
+Order: `{ id, userId, status, items[], subtotalCents, discountCode, discountCents, shippingCents, totalCents, createdAt, updatedAt }`;
+each item is `{ productId, name, unitPriceCents, quantity, lineTotalCents, available }` where `available` says whether the
+product is still in the catalog with stock, so it can be ordered again (`false` once it is removed or out of stock);
 status is `placed`, `shipped` or `cancelled`. `subtotalCents` is the cart subtotal before the discount;
 `discountCode` is the code as staff created it (`null` without one) and `discountCents` the amount taken off (0 without one);
 `totalCents = subtotalCents - discountCents + shippingCents`.

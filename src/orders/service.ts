@@ -3,7 +3,7 @@ import { pool, withTransaction } from '../db';
 import { applyAtCheckout, AppliedDiscount } from '../discounts/service';
 import { badRequest, conflict, notFound } from '../errors';
 
-export const FREE_SHIPPING_THRESHOLD_CENTS = 5000;
+export const FREE_SHIPPING_THRESHOLD_CENTS = 4000;
 export const SHIPPING_FEE_CENTS = 599;
 
 export type OrderStatus = 'placed' | 'shipped' | 'cancelled';
@@ -14,6 +14,8 @@ export interface OrderItem {
   unitPriceCents: number;
   quantity: number;
   lineTotalCents: number;
+  /** The product is still in the catalog and has stock, so it can be ordered again. */
+  available: boolean;
 }
 
 export interface Order {
@@ -75,6 +77,7 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
       unitPriceCents: it.unit_price_cents,
       quantity: it.quantity,
       lineTotalCents: it.line_total_cents,
+      available: false,
     });
     byOrder.set(it.order_id, list);
   }
@@ -91,6 +94,21 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   }));
+}
+
+/** Order history: mark each line with whether the item is still available right now (one query for all lines). */
+async function withAvailability(orders: Order[]): Promise<Order[]> {
+  const ids = [...new Set(orders.flatMap((o) => o.items.map((i) => i.productId)))];
+  if (ids.length === 0) return orders;
+  const { rows } = await pool.query<{ id: number; active: boolean; stock: number }>(
+    'SELECT id, active, stock FROM products WHERE id = ANY($1)',
+    [ids],
+  );
+  const available = new Map(rows.map((r) => [r.id, r.active && r.stock > 0]));
+  for (const order of orders) {
+    for (const item of order.items) item.available = available.get(item.productId) ?? false;
+  }
+  return orders;
 }
 
 export interface CheckoutOptions {
@@ -187,7 +205,7 @@ export async function listForUser(userId: number): Promise<Order[]> {
     `SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = $1 ORDER BY created_at DESC, id DESC`,
     [userId],
   );
-  return loadOrders(pool, rows);
+  return withAvailability(await loadOrders(pool, rows));
 }
 
 export async function getForUser(userId: number, orderId: number): Promise<Order> {
@@ -196,7 +214,7 @@ export async function getForUser(userId: number, orderId: number): Promise<Order
     userId,
   ]);
   if (rows.length === 0) throw notFound('order not found');
-  const [order] = await loadOrders(pool, rows);
+  const [order] = await withAvailability(await loadOrders(pool, rows));
   return order;
 }
 
