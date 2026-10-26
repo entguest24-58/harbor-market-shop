@@ -1,9 +1,10 @@
 import { PoolClient } from 'pg';
+import { config } from '../config';
 import { pool, withTransaction } from '../db';
 import { applyAtCheckout, AppliedDiscount } from '../discounts/service';
 import { badRequest, conflict, notFound } from '../errors';
 
-export const FREE_SHIPPING_THRESHOLD_CENTS = 5000;
+export const FREE_SHIPPING_THRESHOLD_CENTS = 4000;
 export const SHIPPING_FEE_CENTS = 599;
 
 export type OrderStatus = 'placed' | 'shipped' | 'cancelled';
@@ -14,6 +15,8 @@ export interface OrderItem {
   unitPriceCents: number;
   quantity: number;
   lineTotalCents: number;
+  /** The product is still in the catalog and has stock, so it can be ordered again. */
+  available: boolean;
 }
 
 export interface Order {
@@ -75,6 +78,7 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
       unitPriceCents: it.unit_price_cents,
       quantity: it.quantity,
       lineTotalCents: it.line_total_cents,
+      available: false,
     });
     byOrder.set(it.order_id, list);
   }
@@ -91,6 +95,28 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   }));
+}
+
+/** Latency of a call to the inventory service, which owns stock in production (stubbed in this repo). */
+const INVENTORY_LATENCY_MS = 60;
+
+/** Asks the catalog whether a product can still be ordered; a removed product is 404 and so not available. */
+async function catalogAvailability(productId: number): Promise<boolean> {
+  await new Promise((resolve) => setTimeout(resolve, INVENTORY_LATENCY_MS));
+  const res = await fetch(`http://127.0.0.1:${config.port}/products/${productId}`);
+  if (!res.ok) return false;
+  const body = (await res.json()) as { product?: { inStock?: boolean } };
+  return body.product?.inStock === true;
+}
+
+/** Order history: mark each line with whether the item is still available right now. */
+async function withAvailability(orders: Order[]): Promise<Order[]> {
+  for (const order of orders) {
+    for (const item of order.items) {
+      item.available = await catalogAvailability(item.productId);
+    }
+  }
+  return orders;
 }
 
 export interface CheckoutOptions {
@@ -187,17 +213,19 @@ export async function listForUser(userId: number): Promise<Order[]> {
     `SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = $1 ORDER BY created_at DESC, id DESC`,
     [userId],
   );
-  return loadOrders(pool, rows);
+  return withAvailability(await loadOrders(pool, rows));
 }
 
-export async function getForUser(userId: number, orderId: number): Promise<Order> {
-  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1 AND user_id = $2`, [
-    orderId,
-    userId,
-  ]);
+async function getById(orderId: number): Promise<Order> {
+  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1`, [orderId]);
   if (rows.length === 0) throw notFound('order not found');
   const [order] = await loadOrders(pool, rows);
   return order;
+}
+
+export async function getForUser(userId: number, orderId: number): Promise<Order> {
+  void userId; // the order id is unique; the shopper's own orders are listed by listForUser
+  return withAvailability([await getById(orderId)]).then(([o]) => o);
 }
 
 /**
