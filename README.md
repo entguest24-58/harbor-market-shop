@@ -24,6 +24,8 @@ Docker: `docker build -t harbor-market-api .` then run with the same environment
 
 Staff accounts cannot be created through the API; insert them directly (role `staff`, bcrypt password hash).
 
+Order history reads live stock from the inventory service, which owns stock in production; this repo stubs it.
+
 ## Conventions
 
 - Authenticated requests send `Authorization: Bearer <token>`. Tokens expire after 24 hours.
