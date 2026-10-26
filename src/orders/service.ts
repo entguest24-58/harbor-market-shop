@@ -1,5 +1,4 @@
 import { PoolClient } from 'pg';
-import { config } from '../config';
 import { pool, withTransaction } from '../db';
 import { applyAtCheckout, AppliedDiscount } from '../discounts/service';
 import { badRequest, conflict, notFound } from '../errors';
@@ -97,24 +96,17 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
   }));
 }
 
-/** Latency of a call to the inventory service, which owns stock in production (stubbed in this repo). */
-const INVENTORY_LATENCY_MS = 60;
-
-/** Asks the catalog whether a product can still be ordered; a removed product is 404 and so not available. */
-async function catalogAvailability(productId: number): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, INVENTORY_LATENCY_MS));
-  const res = await fetch(`http://127.0.0.1:${config.port}/products/${productId}`);
-  if (!res.ok) return false;
-  const body = (await res.json()) as { product?: { inStock?: boolean } };
-  return body.product?.inStock === true;
-}
-
-/** Order history: mark each line with whether the item is still available right now. */
+/** Order history: mark each line with whether the item is still available right now (one query for all lines). */
 async function withAvailability(orders: Order[]): Promise<Order[]> {
+  const ids = [...new Set(orders.flatMap((o) => o.items.map((i) => i.productId)))];
+  if (ids.length === 0) return orders;
+  const { rows } = await pool.query<{ id: number; active: boolean; stock: number }>(
+    'SELECT id, active, stock FROM products WHERE id = ANY($1)',
+    [ids],
+  );
+  const available = new Map(rows.map((r) => [r.id, r.active && r.stock > 0]));
   for (const order of orders) {
-    for (const item of order.items) {
-      item.available = await catalogAvailability(item.productId);
-    }
+    for (const item of order.items) item.available = available.get(item.productId) ?? false;
   }
   return orders;
 }
@@ -216,16 +208,14 @@ export async function listForUser(userId: number): Promise<Order[]> {
   return withAvailability(await loadOrders(pool, rows));
 }
 
-async function getById(orderId: number): Promise<Order> {
-  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1`, [orderId]);
-  if (rows.length === 0) throw notFound('order not found');
-  const [order] = await loadOrders(pool, rows);
-  return order;
-}
-
 export async function getForUser(userId: number, orderId: number): Promise<Order> {
-  void userId; // the order id is unique; the shopper's own orders are listed by listForUser
-  return withAvailability([await getById(orderId)]).then(([o]) => o);
+  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1 AND user_id = $2`, [
+    orderId,
+    userId,
+  ]);
+  if (rows.length === 0) throw notFound('order not found');
+  const [order] = await withAvailability(await loadOrders(pool, rows));
+  return order;
 }
 
 /**
