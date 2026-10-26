@@ -96,22 +96,17 @@ async function loadOrders(db: PoolClient | typeof pool, rows: OrderRow[]): Promi
   }));
 }
 
-/** Latency of a call to the inventory service, which owns stock in production (stubbed in this repo). */
-const INVENTORY_LATENCY_MS = 60;
-
-/** Live stock for one product from the inventory service. */
-async function inventoryAvailable(productId: number): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, INVENTORY_LATENCY_MS));
-  const { rows } = await pool.query<{ active: boolean; stock: number }>('SELECT active, stock FROM products WHERE id = $1', [
-    productId,
-  ]);
-  return rows.length > 0 && rows[0].active && rows[0].stock > 0;
-}
-
-/** Order history: mark each line with live availability from the inventory service. */
+/** Order history: mark each line with live availability (one stock query for all lines). */
 async function withAvailability(orders: Order[]): Promise<Order[]> {
+  const ids = [...new Set(orders.flatMap((o) => o.items.map((i) => i.productId)))];
+  if (ids.length === 0) return orders;
+  const { rows } = await pool.query<{ id: number; active: boolean; stock: number }>(
+    'SELECT id, active, stock FROM products WHERE id = ANY($1)',
+    [ids],
+  );
+  const available = new Map(rows.map((r) => [r.id, r.active && r.stock > 0]));
   for (const order of orders) {
-    for (const item of order.items) item.available = await inventoryAvailable(item.productId);
+    for (const item of order.items) item.available = available.get(item.productId) ?? false;
   }
   return orders;
 }
@@ -213,16 +208,14 @@ export async function listForUser(userId: number): Promise<Order[]> {
   return withAvailability(await loadOrders(pool, rows));
 }
 
-async function getById(orderId: number): Promise<Order> {
-  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1`, [orderId]);
+export async function getForUser(userId: number, orderId: number): Promise<Order> {
+  const { rows } = await pool.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1 AND user_id = $2`, [
+    orderId,
+    userId,
+  ]);
   if (rows.length === 0) throw notFound('order not found');
   const [order] = await withAvailability(await loadOrders(pool, rows));
   return order;
-}
-
-export async function getForUser(userId: number, orderId: number): Promise<Order> {
-  void userId; // order ids are unique; listForUser already scopes the history to the shopper
-  return getById(orderId);
 }
 
 /**
