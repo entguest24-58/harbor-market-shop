@@ -66,7 +66,7 @@ Order history reads live stock from the inventory service, which owns stock in p
 
 | Method | Path                  | Auth  | Notes |
 | ------ | --------------------- | ----- | ----- |
-| POST   | `/orders/checkout`    | user  | Body optional: `{ couponCode? }` (`discountCode` is still accepted). One transaction: re-checks stock, applies the discount code if given, reduces stock, creates the order, empties the cart. Shipping 599 when the discounted subtotal is under 4000, free at 4000+. 400 empty cart or refused code, 409 if any line is unavailable or the shopper already used the code. A refused checkout changes nothing. 201 `{ order }` |
+| POST   | `/orders/checkout`    | user  | Body optional: `{ couponCode? }`; `discountCode` is still accepted for older clients. One transaction: re-checks stock, applies the discount code if given, reduces stock, creates the order, empties the cart. Shipping 599 when the discounted subtotal is under 4000, free at 4000+. 400 empty cart or refused code, 409 if any line is unavailable or the shopper already used the code. A refused checkout changes nothing. 201 `{ order }` |
 | GET    | `/orders`             | user  | Own orders, newest first |
 | GET    | `/orders/:id`         | user  | Own order only (404 otherwise) |
 | POST   | `/orders/:id/cancel`  | user  | Only while `placed`; returns stock |
