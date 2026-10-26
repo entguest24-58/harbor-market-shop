@@ -71,7 +71,7 @@ Staff accounts cannot be created through the API; insert them directly (role `st
 | POST   | `/orders/:id/ship`    | staff | `placed` → `shipped` |
 
 Order: `{ id, userId, status, items[], subtotalCents, discountCode, discountCents, shippingCents, totalCents, createdAt, updatedAt }`;
-each item is `{ productId, name, unitPriceCents, quantity, lineTotalCents, available }` where `available` says whether the
+each item is `{ productId, productName, unitPriceCents, quantity, lineTotalCents, available }` where `available` says whether the
 product is still in the catalog with stock, so it can be ordered again (`false` once it is removed or out of stock);
 status is `placed`, `shipped` or `cancelled`. `subtotalCents` is the cart subtotal before the discount;
 `discountCode` is the code as staff created it (`null` without one) and `discountCents` the amount taken off (0 without one);
