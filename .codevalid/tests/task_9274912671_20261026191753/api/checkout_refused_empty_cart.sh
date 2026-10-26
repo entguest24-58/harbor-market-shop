@@ -15,7 +15,7 @@ CID=$(cv_seed_code "$CODE" percentage 10 0 NULL true) || cv_fail "expected disco
 
 # When
 cv_step When "shopper checks out with the empty cart" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "checkout refused with clear error; no order, no code usage, cart still empty" $LINENO

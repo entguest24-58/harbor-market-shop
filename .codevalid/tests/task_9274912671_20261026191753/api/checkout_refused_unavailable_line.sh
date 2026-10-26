@@ -21,7 +21,7 @@ cv_sql "UPDATE products SET stock = 1 WHERE id = $P2" >/dev/null || cv_fail "exp
 
 # When
 cv_step When "shopper checks out with a valid code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "checkout refused naming the line; stock, orders, cart and code usage unchanged" $LINENO

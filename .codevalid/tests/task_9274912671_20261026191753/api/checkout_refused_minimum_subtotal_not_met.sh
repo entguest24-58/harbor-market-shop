@@ -17,7 +17,7 @@ cv_add_to_cart "$TOKEN" "$PID" 2 $LINENO
 
 # When
 cv_step When "shopper checks out with the minimum-spend code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "refused explaining the minimum subtotal; no order, stock or usage change" $LINENO

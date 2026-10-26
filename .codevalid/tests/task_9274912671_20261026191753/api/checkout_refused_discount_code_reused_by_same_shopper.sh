@@ -15,12 +15,12 @@ CODE="RU$SFX"; CODE=${CODE:0:20}
 CID=$(cv_seed_code "$CODE" percentage 10 0 NULL true) || cv_fail "expected discount code row created got error" $LINENO
 cv_add_to_cart "$TOKEN" "$PID" 2 $LINENO
 cv_prereq "first checkout using the code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" 201 -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" 201 -H "Authorization: Bearer $TOKEN"
 cv_add_to_cart "$TOKEN" "$PID" 1 $LINENO
 
 # When
 cv_step When "shopper checks out again with the same code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "refused as already used; no new order, stock and cart unchanged" $LINENO

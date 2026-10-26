@@ -15,7 +15,7 @@ CODE="CX$SFX"; CODE=${CODE:0:20}
 CID=$(cv_seed_code "$CODE" percentage 10 0 NULL true) || cv_fail "expected discount code row created got error" $LINENO
 cv_add_to_cart "$TOKEN" "$PID" 2 $LINENO
 cv_prereq "first checkout using the code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" 201 -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" 201 -H "Authorization: Bearer $TOKEN"
 FIRST_ID=$(printf '%s' "$CV_HTTP_BODY" | jq -r '.order.id')
 cv_prereq "cancel the first order" $LINENO
 cv_http POST "/orders/$FIRST_ID/cancel" "" 200 -H "Authorization: Bearer $TOKEN"
@@ -24,7 +24,7 @@ cv_add_to_cart "$TOKEN" "$PID" 3 $LINENO
 
 # When
 cv_step When "shopper checks out again with the same code" $LINENO
-cv_http POST /orders/checkout "{\"discountCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
+cv_http POST /orders/checkout "{\"couponCode\":\"$CODE\"}" -H "Authorization: Bearer $TOKEN"
 
 # Then
 cv_step Then "checkout succeeds with discount; stock reduced; cart emptied" $LINENO
