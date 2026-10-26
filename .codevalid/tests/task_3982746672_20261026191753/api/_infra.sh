@@ -181,3 +181,21 @@ cv_cleanup() {
     cv_sql "DELETE FROM orders WHERE discount_code_id = $d; DELETE FROM discount_codes WHERE id = $d" >/dev/null || true
   done
 }
+
+# cv_remove_product <product_id>  -> takes it out of the catalog (soft delete, history keeps it)
+cv_remove_product() {
+  cv_sql "UPDATE products SET active = FALSE, updated_at = now() WHERE id = $1" >/dev/null \
+    || cv_fail "expected product $1 removed from catalog got psql error" "${2:-}"
+}
+
+# cv_set_stock <product_id> <stock>
+cv_set_stock() {
+  cv_sql "UPDATE products SET stock = $2, updated_at = now() WHERE id = $1" >/dev/null \
+    || cv_fail "expected product $1 stock set to $2 got psql error" "${3:-}"
+}
+
+# cv_line_available <order_json> <product_id> -> prints the line's .available (or "missing")
+cv_line_available() {
+  printf '%s' "$1" | jq -r --argjson p "$2" \
+    '[.items[] | select(.productId == $p)] | if length == 0 then "missing" else (.[0].available | tostring) end'
+}
