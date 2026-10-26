@@ -32,7 +32,7 @@ cc=$(printf '%s' "$O" | jq -r '.canCancel // "absent"')
 [ "$cc" != "true" ] || cv_fail "expected canCancel not true on cancelled order got $cc" $LINENO
 dc=$(printf '%s' "$O" | jq -r '"\(.discountCode) \(.discountCents)"')
 [ "$dc" = "null 0" ] || cv_fail "expected no discount applied on cancelled order (discountCode null, discountCents 0) got '$dc'" $LINENO
-got=$(printf '%s' "$O" | jq -r --argjson p "$P1" '[.items[] | select(.productId == $p)][0] | "\(.name) \(.quantity)"')
+got=$(printf '%s' "$O" | jq -r --argjson p "$P1" '[.items[] | select(.productId == $p)][0] | "\(.productName) \(.quantity)"')
 [ "$got" = "CV Lamp $CV_SUFFIX 1" ] || cv_fail "expected removed product line retained as 'CV Lamp $CV_SUFFIX 1' got '$got'" $LINENO
 av=$(cv_line_available "$O" "$P1")
 [ "$av" = "false" ] || cv_fail "expected removed product line available=false got $av" $LINENO

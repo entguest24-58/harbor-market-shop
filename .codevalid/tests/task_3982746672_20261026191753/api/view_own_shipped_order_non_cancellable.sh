@@ -29,7 +29,7 @@ got=$(printf '%s' "$O" | jq -r '"\(.id) \(.status | ascii_downcase)"')
 [ "$got" = "$OID shipped" ] || cv_fail "expected '$OID shipped' got '$got'" $LINENO
 cc=$(printf '%s' "$O" | jq -r '.canCancel // "absent"')
 [ "$cc" != "true" ] || cv_fail "expected canCancel not true on shipped order got $cc" $LINENO
-got=$(printf '%s' "$O" | jq -r --argjson p "$P2" '[.items[] | select(.productId == $p)][0] | "\(.name) \(.unitPriceCents) \(.quantity)"')
+got=$(printf '%s' "$O" | jq -r --argjson p "$P2" '[.items[] | select(.productId == $p)][0] | "\(.productName) \(.unitPriceCents) \(.quantity)"')
 [ "$got" = "CV Vase $CV_SUFFIX 1500 1" ] || cv_fail "expected sold-out line kept as 'CV Vase $CV_SUFFIX 1500 1' got '$got'" $LINENO
 av=$(cv_line_available "$O" "$P2")
 [ "$av" = "false" ] || cv_fail "expected sold-out line available=false got $av" $LINENO
